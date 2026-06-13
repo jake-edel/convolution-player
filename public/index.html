@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Convolution Player</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #888;
+      border-bottom: 1px solid #222;
+      padding-bottom: 0.75rem;
+    }
+
+    .panel {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    label {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    select {
+      width: 100%;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 0.6rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      appearance: none;
+      cursor: pointer;
+      outline: none;
+    }
+    select:focus { border-color: #555; }
+    select option { background: #141414; }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .volume-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #c8ff00;
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #c8ff00;
+      border: none;
+      cursor: pointer;
+    }
+
+    #vol-display {
+      font-size: 0.8rem;
+      color: #c8ff00;
+      width: 3ch;
+      text-align: right;
+    }
+
+    .number-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .number-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .num-btn {
+      width: 42px;
+      height: 42px;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #888;
+      font-family: inherit;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .num-btn:hover { border-color: #555; color: #e0e0e0; }
+    .num-btn.active {
+      background: #1a1a00;
+      border-color: #c8ff00;
+      color: #c8ff00;
+    }
+
+    .transport {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.9rem;
+      border: 1px solid #333;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    #play-btn {
+      background: #1a2200;
+      border-color: #4a6600;
+      color: #c8ff00;
+    }
+    #play-btn:hover:not(:disabled) {
+      background: #253100;
+      border-color: #c8ff00;
+    }
+    #play-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    #play-btn.playing {
+      background: #0d1500;
+      border-color: #c8ff00;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    #stop-btn {
+      background: #1a0000;
+      border-color: #660000;
+      color: #ff6060;
+    }
+    #stop-btn:hover:not(:disabled) {
+      background: #250000;
+      border-color: #ff6060;
+    }
+    #stop-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    #auto-btn {
+      background: #001a1a;
+      border-color: #006666;
+      color: #00d4d4;
+    }
+    #auto-btn:hover:not(:disabled) {
+      background: #002525;
+      border-color: #00d4d4;
+    }
+    #auto-btn.active {
+      background: #001010;
+      border-color: #00d4d4;
+      animation: pulse-cyan 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-cyan {
+      0%, 100% { border-color: #00d4d4; }
+      50% { border-color: #006666; }
+    }
+
+    .gap-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .gap-row label { white-space: nowrap; flex-shrink: 0; }
+    #gap-display {
+      font-size: 0.8rem;
+      color: #00d4d4;
+      width: 4ch;
+      text-align: right;
+    }
+
+    #pitch-display {
+      font-size: 0.8rem;
+      color: #ff9f40;
+      width: 5ch;
+      text-align: right;
+    }
+    input[type="range"]#pitch::-webkit-slider-thumb { background: #ff9f40; }
+    input[type="range"]#pitch::-moz-range-thumb { background: #ff9f40; }
+
+    .walk-group {
+      border: 1px solid #4a2800;
+      border-radius: 5px;
+      padding: 0.75rem;
+      background: #0d0800;
+    }
+    .walk-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .walk-sliders {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .walk-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .walk-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #a05820;
+      width: 7rem;
+      flex-shrink: 0;
+    }
+    #walk-btn {
+      flex-shrink: 0;
+      padding: 0.5rem 0.75rem;
+      background: #1a0d00;
+      border: 1px solid #664400;
+      border-radius: 4px;
+      color: #ff9f40;
+      font-family: inherit;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+      align-self: stretch;
+    }
+    #walk-btn:hover { border-color: #ff9f40; background: #251200; }
+    #walk-btn.active {
+      background: #100800;
+      border-color: #ff9f40;
+      animation: pulse-orange 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-orange {
+      0%, 100% { border-color: #ff9f40; }
+      50%       { border-color: #664400; }
+    }
+    #walk-step-display,
+    #walk-interval-display {
+      font-size: 0.8rem;
+      color: #ff9f40;
+      width: 5ch;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    input[type="range"]#walk-step::-webkit-slider-thumb,
+    input[type="range"]#walk-interval::-webkit-slider-thumb { background: #ff9f40; }
+    input[type="range"]#walk-step::-moz-range-thumb,
+    input[type="range"]#walk-interval::-moz-range-thumb     { background: #ff9f40; }
+
+    @keyframes pulse {
+      0%, 100% { border-color: #c8ff00; }
+      50% { border-color: #4a6600; }
+    }
+
+    .status {
+      font-size: 0.72rem;
+      color: #444;
+      letter-spacing: 0.05em;
+      min-height: 1.2em;
+      transition: color 0.3s;
+    }
+    .status.ok { color: #4a8800; }
+    .status.err { color: #aa3300; }
+    .status.info { color: #558;  }
+
+    .vu-bar {
+      height: 4px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .vu-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4a6600, #c8ff00);
+      border-radius: 2px;
+      transition: width 0.05s;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>Convolution Player</h1>
+
+  <div class="panel">
+    <label>Sample</label>
+    <select id="sample-select">
+      <option value="">— loading —</option>
+    </select>
+
+    <label>Impulse Response</label>
+    <select id="impulse-select">
+      <option value="">— loading —</option>
+    </select>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <div class="volume-group">
+        <label>Volume</label>
+        <div class="volume-row">
+          <input type="range" id="volume" min="0" max="1" step="0.01" value="0.2" />
+          <span id="vol-display">20</span>
+        </div>
+        <div class="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
+      </div>
+
+      <div class="number-group">
+        <label>Number</label>
+        <div class="number-buttons">
+          <button class="num-btn active" data-n="1">1</button>
+          <button class="num-btn" data-n="2">2</button>
+          <button class="num-btn" data-n="3">3</button>
+          <button class="num-btn" data-n="4">4</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="transport">
+      <button class="btn" id="play-btn" disabled>▶ Play</button>
+      <button class="btn" id="auto-btn" disabled>⟳ Auto</button>
+      <button class="btn" id="stop-btn" disabled>■ Stop</button>
+    </div>
+    <div class="gap-row">
+      <label>Gap (s)</label>
+      <input type="range" id="gap" min="0" max="10" step="0.5" value="1" />
+      <span id="gap-display">1.0</span>
+    </div>
+    <div class="gap-row">
+      <label>Pitch</label>
+      <input type="range" id="pitch" min="-24" max="24" step="1" value="0" />
+      <span id="pitch-display">0 st</span>
+    </div>
+    <div class="walk-group">
+      <div class="walk-row">
+        <button id="walk-btn">⇅ Drift</button>
+        <div class="walk-sliders">
+          <div class="walk-slider-row">
+            <label class="walk-label">Step</label>
+            <input type="range" id="walk-step" min="1" max="12" step="1" value="3" />
+            <span id="walk-step-display">±3 st</span>
+          </div>
+          <div class="walk-slider-row">
+            <label class="walk-label">Max interval</label>
+            <input type="range" id="walk-interval" min="0.5" max="30" step="0.5" value="5" />
+            <span id="walk-interval-display">5.0s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="status" id="status">Loading file lists…</div>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let audioCtx = null;
+  let sourceNode = null;
+  let gainNode = null;
+  let convolverNode = null;
+  let analyserNode = null;
+  let animFrame = null;
+  let selectedNumber = 1;
+  let autoPlaying = false;
+  let autoTimer = null;
+  let lastSampleIndex = -1;
+  let lastImpulseIndex = -1;
+
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  const sampleSel  = document.getElementById('sample-select');
+  const impulseSel = document.getElementById('impulse-select');
+  const volumeSlider = document.getElementById('volume');
+  const volDisplay   = document.getElementById('vol-display');
+  const vuFill       = document.getElementById('vu-fill');
+  const playBtn  = document.getElementById('play-btn');
+  const autoBtn  = document.getElementById('auto-btn');
+  const stopBtn  = document.getElementById('stop-btn');
+  const statusEl = document.getElementById('status');
+  const numBtns  = document.querySelectorAll('.num-btn');
+  const gapSlider   = document.getElementById('gap');
+  const gapDisplay  = document.getElementById('gap-display');
+  const pitchSlider    = document.getElementById('pitch');
+  const pitchDisplay   = document.getElementById('pitch-display');
+  const walkBtn             = document.getElementById('walk-btn');
+  const walkStepSlider      = document.getElementById('walk-step');
+  const walkStepDisplay     = document.getElementById('walk-step-display');
+  const walkIntervalSlider  = document.getElementById('walk-interval');
+  const walkIntervalDisplay = document.getElementById('walk-interval-display');
+  let walkActive = false;
+  let walkTimer  = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function setStatus(msg, cls = '') {
+    statusEl.textContent = msg;
+    statusEl.className = 'status ' + cls;
+  }
+
+  function populateSelect(sel, files, prefix) {
+    sel.innerHTML = '';
+    if (!files.length) {
+      sel.innerHTML = `<option value="">— no files found —</option>`;
+      return;
+    }
+    files.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = `/${prefix}/${encodeURIComponent(f)}`;
+      opt.textContent = f;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function sendOSC(address, ...args) {
+    try {
+      const res = await fetch('/api/osc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, args })
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (e) {
+      setStatus(`OSC error: ${e.message}`, 'err');
+    }
+  }
+
+  // ── File lists ─────────────────────────────────────────────────────────────
+  async function loadLists() {
+    try {
+      const [samples, impulses] = await Promise.all([
+        fetch('/api/samples').then(r => r.json()),
+        fetch('/api/impulses').then(r => r.json())
+      ]);
+      populateSelect(sampleSel, samples, 'samples');
+      populateSelect(impulseSel, impulses, 'impulses');
+      checkReady();
+      setStatus(
+        samples.length && impulses.length
+          ? `${samples.length} sample(s), ${impulses.length} impulse(s) loaded`
+          : 'Warning: one or more folders appear empty',
+        samples.length && impulses.length ? 'ok' : 'err'
+      );
+      if (samples.length && impulses.length) autoBtn.click();
+    } catch (e) {
+      setStatus('Failed to load file lists: ' + e.message, 'err');
+    }
+  }
+
+  function checkReady() {
+    const ready = sampleSel.value && impulseSel.value;
+    playBtn.disabled = !ready;
+    autoBtn.disabled = !ready;
+  }
+
+  // ── Gap slider ─────────────────────────────────────────────────────────────
+  gapSlider.addEventListener('input', () => {
+    gapDisplay.textContent = parseFloat(gapSlider.value).toFixed(1);
+  });
+
+  // ── Pitch slider ───────────────────────────────────────────────────────────
+  function semitoneToRate(st) { return Math.pow(2, st / 12); }
+
+  function updatePitchDisplay(st) {
+    pitchDisplay.textContent = (st > 0 ? '+' : '') + st + ' st';
+  }
+
+  pitchSlider.addEventListener('input', () => {
+    const st = parseInt(pitchSlider.value);
+    updatePitchDisplay(st);
+    if (sourceNode) sourceNode.playbackRate.setTargetAtTime(semitoneToRate(st), audioCtx.currentTime, 0.01);
+  });
+
+  // ── Pitch walk ─────────────────────────────────────────────────────────────
+  walkStepSlider.addEventListener('input', () => {
+    walkStepDisplay.textContent = '±' + walkStepSlider.value + ' st';
+  });
+
+  walkIntervalSlider.addEventListener('input', () => {
+    walkIntervalDisplay.textContent = parseFloat(walkIntervalSlider.value).toFixed(1) + 's';
+  });
+
+  function scheduleWalkStep() {
+    const maxInterval = parseFloat(walkIntervalSlider.value);
+    const delay = (0.5 + Math.random() * (maxInterval - 0.5)) * 1000;
+    walkTimer = setTimeout(() => {
+      if (!walkActive) return;
+      const maxStep = parseInt(walkStepSlider.value);
+      const delta = Math.floor(Math.random() * (maxStep * 2 + 1)) - maxStep;
+      const current = parseInt(pitchSlider.value);
+      const next = Math.max(-24, Math.min(24, current + delta));
+      pitchSlider.value = next;
+      updatePitchDisplay(next);
+      if (sourceNode) sourceNode.playbackRate.setTargetAtTime(semitoneToRate(next), audioCtx.currentTime, 0.05);
+      scheduleWalkStep();
+    }, delay);
+  }
+
+  walkBtn.addEventListener('click', () => {
+    walkActive = !walkActive;
+    if (walkActive) {
+      walkBtn.classList.add('active');
+      walkBtn.textContent = '⇅ Drifting';
+      scheduleWalkStep();
+    } else {
+      walkBtn.classList.remove('active');
+      walkBtn.textContent = '⇅ Walk';
+      clearTimeout(walkTimer);
+      walkTimer = null;
+    }
+  });
+
+  function pickRandomPitch() {
+    const st = Math.floor(Math.random() * 49) - 24; // -24 to +24
+    pitchSlider.value = st;
+    updatePitchDisplay(st);
+  }
+
+  // ── Auto helpers ───────────────────────────────────────────────────────────
+  function pickRandomSample() {
+    const opts = sampleSel.options;
+    if (opts.length <= 1) return;
+    let idx;
+    do { idx = Math.floor(Math.random() * opts.length); }
+    while (idx === lastSampleIndex && opts.length > 1);
+    lastSampleIndex = idx;
+    sampleSel.selectedIndex = idx;
+  }
+
+  function pickRandomImpulse() {
+    const opts = impulseSel.options;
+    if (opts.length <= 1) return;
+    let idx;
+    do { idx = Math.floor(Math.random() * opts.length); }
+    while (idx === lastImpulseIndex && opts.length > 1);
+    lastImpulseIndex = idx;
+    impulseSel.selectedIndex = idx;
+  }
+
+  function stopAuto() {
+    autoPlaying = false;
+    clearTimeout(autoTimer);
+    autoTimer = null;
+    autoBtn.classList.remove('active');
+    autoBtn.textContent = '⟳ Auto';
+  }
+
+  sampleSel.addEventListener('change', checkReady);
+  impulseSel.addEventListener('change', checkReady);
+
+  // ── Volume ─────────────────────────────────────────────────────────────────
+  volumeSlider.addEventListener('input', () => {
+    const v = parseFloat(volumeSlider.value);
+    volDisplay.textContent = Math.round(v * 100);
+    if (gainNode) gainNode.gain.setTargetAtTime(v, audioCtx.currentTime, 0.01);
+  });
+
+  // ── Number buttons ─────────────────────────────────────────────────────────
+  numBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      numBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedNumber = parseInt(btn.dataset.n);
+    });
+  });
+
+  // ── VU meter ───────────────────────────────────────────────────────────────
+  function startVU() {
+    if (!analyserNode) return;
+    const data = new Uint8Array(analyserNode.frequencyBinCount);
+    function tick() {
+      analyserNode.getByteTimeDomainData(data);
+      let max = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = Math.abs(data[i] - 128) / 128;
+        if (v > max) max = v;
+      }
+      vuFill.style.width = (max * 100) + '%';
+      animFrame = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  function stopVU() {
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+    vuFill.style.width = '0%';
+  }
+
+  // ── Audio buffer loader ────────────────────────────────────────────────────
+  async function loadBuffer(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} loading ${url}`);
+    const arrayBuf = await res.arrayBuffer();
+    return audioCtx.decodeAudioData(arrayBuf);
+  }
+
+  // ── Play ───────────────────────────────────────────────────────────────────
+  async function play() {
+    if (!sampleSel.value || !impulseSel.value) return;
+
+    // Resume (or create) AudioContext
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    // Stop any existing playback without sending OSC
+    if (sourceNode) {
+      try { sourceNode.stop(); } catch (_) {}
+      sourceNode.disconnect();
+      sourceNode = null;
+    }
+
+    setStatus('Loading audio…', 'info');
+    playBtn.disabled = true;
+
+    try {
+      const [sampleBuf, impulseBuf] = await Promise.all([
+        loadBuffer(sampleSel.value),
+        loadBuffer(impulseSel.value)
+      ]);
+
+      // Build graph: source → convolver → gain → analyser → destination
+      convolverNode = audioCtx.createConvolver();
+      convolverNode.buffer = impulseBuf;
+
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = parseFloat(volumeSlider.value);
+
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 256;
+
+      sourceNode = audioCtx.createBufferSource();
+      sourceNode.buffer = sampleBuf;
+      sourceNode.playbackRate.value = semitoneToRate(parseInt(pitchSlider.value));
+
+      sourceNode.connect(convolverNode);
+      convolverNode.connect(gainNode);
+      gainNode.connect(analyserNode);
+      analyserNode.connect(audioCtx.destination);
+
+      sourceNode.onended = () => {
+        stopVU();
+        sourceNode = null;
+        if (autoPlaying) {
+          const gapMs = parseFloat(gapSlider.value) * 1000;
+          setStatus(`Auto: next in ${gapSlider.value}s…`, 'info');
+          autoTimer = setTimeout(() => {
+            if (!autoPlaying) return;
+            pickRandomSample();
+            pickRandomImpulse();
+            if (!walkActive) pickRandomPitch();
+            play();
+          }, gapMs);
+        } else {
+          playBtn.classList.remove('playing');
+          playBtn.disabled = false;
+          stopBtn.disabled = true;
+          setStatus('Playback finished', 'ok');
+        }
+      };
+
+      sourceNode.start();
+      startVU();
+
+      // OSC: /play  number  sampleName  impulseName
+      const sampleName  = sampleSel.options[sampleSel.selectedIndex].textContent;
+      const impulseName = impulseSel.options[impulseSel.selectedIndex].textContent;
+      await sendOSC('/play', selectedNumber, sampleName, impulseName);
+
+      playBtn.classList.add('playing');
+      playBtn.disabled = false;
+      stopBtn.disabled = false;
+      setStatus(`Playing: ${sampleName} → ${impulseName}`, 'ok');
+
+    } catch (e) {
+      setStatus('Error: ' + e.message, 'err');
+      playBtn.disabled = false;
+    }
+  }
+
+  // ── Stop ───────────────────────────────────────────────────────────────────
+  async function stop() {
+    if (sourceNode) {
+      try { sourceNode.stop(); } catch (_) {}
+      sourceNode.disconnect();
+      sourceNode = null;
+    }
+    stopVU();
+    playBtn.classList.remove('playing');
+    playBtn.disabled = false;
+    stopBtn.disabled = true;
+    await sendOSC('/stop', selectedNumber);
+    setStatus('Stopped', 'info');
+  }
+
+  // ── Event listeners ────────────────────────────────────────────────────────
+  playBtn.addEventListener('click', () => { stopAuto(); play(); });
+
+  autoBtn.addEventListener('click', () => {
+    if (autoPlaying) {
+      stopAuto();
+      stop();
+    } else {
+      autoPlaying = true;
+      autoBtn.classList.add('active');
+      autoBtn.textContent = '⟳ Stop Auto';
+      stopBtn.disabled = false;
+      pickRandomSample();
+      pickRandomImpulse();
+      if (!walkActive) pickRandomPitch();
+      play();
+    }
+  });
+
+  stopBtn.addEventListener('click', () => { stopAuto(); stop(); });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  loadLists();
+</script>
+  <script>
+    setInterval(() => fetch('/ping').then(r => r.text()).then(v => {
+      if (!window._v) { window._v = v; return; }
+      if (window._v !== v) location.reload();
+    }).catch(() => {}), 1000);
+  </script>
+</body>
+</html>
