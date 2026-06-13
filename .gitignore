@@ -1,10 +1,6 @@
 # Node dependencies
 node_modules/
 
-# macOS metadata files (AppleDouble resource forks)
-._*
-.DS_Store
-
 # Audio asset folders — kept local, not tracked in git
 # Populate samples/ and impulses/ on each machine
 samples/*
