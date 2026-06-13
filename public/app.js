@@ -83,7 +83,6 @@ async function loadLists() {
         : 'Warning: one or more folders appear empty',
       samples.length && impulses.length ? 'ok' : 'err'
     );
-    if (samples.length && impulses.length) autoBtn.click();
   } catch (e) {
     setStatus('Failed to load file lists: ' + e.message, 'err');
   }
@@ -294,6 +293,7 @@ async function play() {
         }, gapMs);
       } else {
         playBtn.classList.remove('playing');
+        playBtn.textContent = '▶ Play';
         playBtn.disabled = false;
         stopBtn.disabled = true;
         setStatus('Playback finished', 'ok');
@@ -308,6 +308,7 @@ async function play() {
     // await sendOSC('/play', selectedNumber, sampleName, impulseName);
 
     playBtn.classList.add('playing');
+    playBtn.textContent = '▶ Playing';
     playBtn.disabled = false;
     stopBtn.disabled = false;
     setStatus(`Playing: ${sampleName} → ${impulseName}`, 'ok');
@@ -330,6 +331,7 @@ async function stop() {
   }
   stopVU();
   playBtn.classList.remove('playing');
+  playBtn.textContent = '▶ Play';
   playBtn.disabled = false;
   stopBtn.disabled = true;
   // await sendOSC('/stop', selectedNumber);
