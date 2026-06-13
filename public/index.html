@@ -478,18 +478,18 @@
     });
   }
 
-  async function sendOSC(address, ...args) {
-    try {
-      const res = await fetch('/api/osc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, args })
-      });
-      if (!res.ok) throw new Error(await res.text());
-    } catch (e) {
-      setStatus(`OSC error: ${e.message}`, 'err');
-    }
-  }
+  // async function sendOSC(address, ...args) {
+  //   try {
+  //     const res = await fetch('/api/osc', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ address, args })
+  //     });
+  //     if (!res.ok) throw new Error(await res.text());
+  //   } catch (e) {
+  //     setStatus(`OSC error: ${e.message}`, 'err');
+  //   }
+  // }
 
   // ── File lists ─────────────────────────────────────────────────────────────
   async function loadLists() {
@@ -727,10 +727,9 @@
       sourceNode.start();
       startVU();
 
-      // OSC: /play  number  sampleName  impulseName
       const sampleName  = sampleSel.options[sampleSel.selectedIndex].textContent;
       const impulseName = impulseSel.options[impulseSel.selectedIndex].textContent;
-      await sendOSC('/play', selectedNumber, sampleName, impulseName);
+      // await sendOSC('/play', selectedNumber, sampleName, impulseName);
 
       playBtn.classList.add('playing');
       playBtn.disabled = false;
@@ -754,7 +753,7 @@
     playBtn.classList.remove('playing');
     playBtn.disabled = false;
     stopBtn.disabled = true;
-    await sendOSC('/stop', selectedNumber);
+    // await sendOSC('/stop', selectedNumber);
     setStatus('Stopped', 'info');
   }
 
