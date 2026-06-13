@@ -7,5 +7,5 @@ node_modules/
 
 # Audio asset folders — kept local, not tracked in git
 # Populate samples/ and impulses/ on each machine
-samples/
-impulses/
+samples/*
+impulses/*
