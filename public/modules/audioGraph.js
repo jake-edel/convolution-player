@@ -155,3 +155,26 @@ export function getGainNode()     { return gainNode;      }
 
 /** @returns {AnalyserNode|null} */
 export function getAnalyserNode() { return analyserNode; }
+
+/**
+ * Creates a short-lived AudioContext to read the maximum channel count for
+ * a given device, then closes it immediately.
+ *
+ * Reading maxChannelCount from the main context after setSinkId() is
+ * unreliable across browser versions — the destination may still reflect
+ * the previous device. A probe context always reports the device's true
+ * capabilities regardless of what the main context is doing.
+ *
+ * @param {string} deviceId - The MediaDeviceInfo.deviceId to probe.
+ * @returns {Promise<number>}
+ */
+export async function probeChannelCount(deviceId) {
+  const probeCtx = new AudioContext();
+  try {
+    await probeCtx.setSinkId(deviceId);
+    console.log(probeCtx)
+    return probeCtx.destination.maxChannelCount;
+  } finally {
+    await probeCtx.close();
+  }
+}

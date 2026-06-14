@@ -1,18 +1,32 @@
-import { setOutputDevice } from './audioGraph.js';
+import { setOutputDevice, probeChannelCount } from './audioGraph.js';
 
-const deviceGroupsEl = document.getElementById('device-groups');
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const deviceGroupsEl  = document.getElementById('device-groups');
+const channelSelectEl = document.getElementById('channel-select');
+const channelChipsEl  = document.getElementById('channel-chips');
 
-// Tracks the currently selected output device across renders.
-// Initialised to 'default' since that is what AudioContext uses until setSinkId() is called.
+// ── State ─────────────────────────────────────────────────────────────────────
 let selectedDeviceId = 'default';
+
+// 1-based channel numbers. All channels start enabled when a device is selected.
+let enabledChannels = new Set();
+
+/**
+ * Returns a copy of the set of currently enabled channel numbers (1-based).
+ * Intended for use by the audio graph when channel routing is wired up.
+ *
+ * @returns {Set<number>}
+ */
+export function getEnabledChannels() { return new Set(enabledChannels); }
 
 /**
  * Returns the deviceId of the currently selected output device.
- * Intended for use by the audio graph when setSinkId() support is wired up.
  *
  * @returns {string}
  */
 export function getSelectedDeviceId() { return selectedDeviceId; }
+
+// ── Permission ────────────────────────────────────────────────────────────────
 
 /**
  * Requests microphone permission — not because we use the mic, but because
@@ -26,16 +40,15 @@ async function unlockDeviceLabels() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(track => track.stop());
   } catch (error) {
-    // Permission denied or no mic present — labels will remain empty,
-    // but we can still display whatever deviceIds the browser exposes.
     console.warn('Microphone permission not granted; device labels may be unavailable.', error);
   }
 }
 
+// ── Device rendering ──────────────────────────────────────────────────────────
+
 /**
- * Fetches the current output device list and re-renders the display.
- * Also called on 'devicechange' so the list stays current as
- * hardware is connected or disconnected.
+ * Fetches the current output device list and re-renders the device chips.
+ * Also called on 'devicechange' so the list stays current as hardware changes.
  */
 async function renderDevices() {
   if (!navigator.mediaDevices?.enumerateDevices) {
@@ -49,23 +62,20 @@ async function renderDevices() {
   deviceGroupsEl.innerHTML = '';
 
   if (audioOutputs.length) {
-    deviceGroupsEl.appendChild(buildChips(audioOutputs));
+    deviceGroupsEl.appendChild(buildDeviceChips(audioOutputs));
   } else {
-    // Firefox does not enumerate output devices without the speaker-selection
-    // permission policy, so this branch is expected there.
     deviceGroupsEl.textContent = 'No output devices found.';
   }
 }
 
 /**
- * Builds a row of selectable chips, one per output device.
- * Clicking a chip updates selectedDeviceId and moves the --selected class
- * without re-rendering the whole list.
+ * Builds a row of selectable device chips. Clicking a chip selects that device,
+ * routes AudioContext output to it, and updates the channel selector below.
  *
  * @param {MediaDeviceInfo[]} devices
  * @returns {HTMLElement}
  */
-function buildChips(devices) {
+function buildDeviceChips(devices) {
   const chipRow = document.createElement('div');
   chipRow.className = 'device-chips';
 
@@ -79,17 +89,21 @@ function buildChips(devices) {
 
     if (device.deviceId === selectedDeviceId) chip.classList.add('device-chip--selected');
 
-    chip.addEventListener('click', () => {
+    chip.addEventListener('click', async () => {
       if (selectedDeviceId === device.deviceId) return;
 
-      // Move the selected class without rebuilding the DOM.
       const previouslySelected = deviceGroupsEl.querySelector('.device-chip--selected');
       if (previouslySelected) previouslySelected.classList.remove('device-chip--selected');
 
       chip.classList.add('device-chip--selected');
       selectedDeviceId = device.deviceId;
 
-      setOutputDevice(device.deviceId);
+      // Route audio to the selected device, then probe its channel count
+      // using a separate throwaway context — reading maxChannelCount from
+      // the main context after setSinkId() is unreliable across browsers.
+      await setOutputDevice(device.deviceId);
+      const channelCount = await probeChannelCount(device.deviceId);
+      renderChannels(channelCount);
     });
 
     chipRow.appendChild(chip);
@@ -97,6 +111,43 @@ function buildChips(devices) {
 
   return chipRow;
 }
+
+// ── Channel rendering ─────────────────────────────────────────────────────────
+
+/**
+ * Renders a row of toggleable channel chips and reveals the channel section.
+ * All channels start enabled. Re-calling this (on device change) resets state.
+ *
+ * @param {number} count - Total number of channels the device supports.
+ */
+function renderChannels(count) {
+  enabledChannels = new Set(Array.from({ length: count }, (_, i) => i + 1));
+
+  channelChipsEl.innerHTML = '';
+
+  for (let channel = 1; channel <= count; channel++) {
+    const chip = document.createElement('div');
+    chip.className   = 'channel-chip channel-chip--enabled';
+    chip.textContent = channel;
+    chip.title       = `Channel ${channel}`;
+
+    chip.addEventListener('click', () => {
+      if (enabledChannels.has(channel)) {
+        enabledChannels.delete(channel);
+        chip.classList.remove('channel-chip--enabled');
+      } else {
+        enabledChannels.add(channel);
+        chip.classList.add('channel-chip--enabled');
+      }
+    });
+
+    channelChipsEl.appendChild(chip);
+  }
+
+  channelSelectEl.hidden = false;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 unlockDeviceLabels().then(renderDevices);
 navigator.mediaDevices?.addEventListener('devicechange', renderDevices);
