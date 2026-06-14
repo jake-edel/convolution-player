@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-channel Output Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 0.9rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #888;
+      border-bottom: 1px solid #222;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 0.6rem;
+    }
+
+    .panel {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      max-width: 780px;
+    }
+
+    /* ── API support ── */
+    .api-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.75rem;
+      padding: 0.2rem 0;
+    }
+    .api-label { color: #888; flex: 1; }
+    .badge {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      border: 1px solid;
+    }
+    .badge--ok  { border-color: #4a6600; color: #c8ff00; background: #1a2200; }
+    .badge--err { border-color: #660000; color: #ff6060; background: #1a0000; }
+
+    /* ── Chips ── */
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+    .chip {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 3px;
+      border: 1px solid #005555;
+      background: #001515;
+      color: #007a7a;
+      cursor: pointer;
+      transition: all 0.12s;
+      user-select: none;
+    }
+    .chip:hover:not(.chip--active) { border-color: #007a7a; color: #009999; }
+    .chip--active { border-color: #00d4d4; color: #00d4d4; background: #002a2a; }
+
+    .ch-chip {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      border: 1px solid #333;
+      background: #0d0d0d;
+      color: #888;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.12s;
+      user-select: none;
+    }
+    .ch-chip:hover:not(.ch-chip--active) { border-color: #555; }
+    .ch-chip--active { border-color: #c8ff00; color: #c8ff00; background: #1a2200; }
+
+    /* ── Controls ── */
+    .btn-row { display: flex; gap: 0.75rem; }
+
+    .btn {
+      padding: 0.7rem 1.5rem;
+      border-radius: 5px;
+      border: 1px solid;
+      font-family: inherit;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .btn--start {
+      background: #1a2200; border-color: #4a6600; color: #c8ff00;
+    }
+    .btn--start:hover:not(:disabled) { background: #253100; border-color: #c8ff00; }
+    .btn--stop  {
+      background: #1a0000; border-color: #660000; color: #ff6060;
+    }
+    .btn--stop:hover:not(:disabled) { background: #250000; border-color: #ff6060; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Meters ── */
+    .meter-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.25rem 0;
+    }
+    .meter-label {
+      font-size: 0.7rem;
+      color: #666;
+      width: 13rem;
+      flex-shrink: 0;
+    }
+    .meter-bar {
+      flex: 1;
+      height: 6px;
+      background: #1a1a1a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4a6600, #c8ff00);
+      border-radius: 3px;
+      transition: width 0.04s;
+    }
+
+    /* ── Log ── */
+    #log {
+      background: #0a0a0a;
+      border: 1px solid #1a1a1a;
+      border-radius: 4px;
+      padding: 0.75rem;
+      font-size: 0.7rem;
+      color: #888;
+      line-height: 1.6;
+      height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+<h1>Multi-channel Output Test Harness</h1>
+
+<div class="panel" id="api-panel">
+  <h2>API Support</h2>
+  <div id="api-checks"></div>
+</div>
+
+<div class="panel">
+  <h2>Output Device</h2>
+  <div class="chip-row" id="device-chips">
+    <span style="color:#444; font-size:0.75rem">Enumerating…</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Test Channels</h2>
+  <div class="chip-row" id="channel-chips"></div>
+</div>
+
+<div class="panel">
+  <h2>Controls</h2>
+  <div class="btn-row">
+    <button class="btn btn--start" id="start-btn">Start Test</button>
+    <button class="btn btn--stop"  id="stop-btn"  disabled>Stop</button>
+  </div>
+</div>
+
+<div class="panel" id="meter-panel" style="display:none">
+  <h2>Channel Meters</h2>
+  <div id="meters"></div>
+</div>
+
+<div class="panel">
+  <h2>Log</h2>
+  <pre id="log"></pre>
+</div>
+
+<script type="module">
+  // ── Constants ───────────────────────────────────────────────────────────────
+  // Harmonics of A2 — distinct enough to identify per-channel but musically related.
+  const CHANNEL_FREQUENCIES = [110, 220, 330, 440, 550, 660, 770, 880];
+  const CHANNEL_COUNTS      = [2, 4, 6, 8];
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  let selectedDeviceId  = 'default';
+  let targetChannelCount = 8;
+  let ctx         = null;
+  let oscillators = [];
+  let analysers   = [];
+  let animFrameId = null;
+
+  // ── Log ─────────────────────────────────────────────────────────────────────
+  function log(msg) {
+    const el = document.getElementById('log');
+    el.textContent += msg + '\n';
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ── API checks ──────────────────────────────────────────────────────────────
+  function checkAPIs() {
+    const checks = [
+      {
+        label: 'navigator.mediaDevices.enumerateDevices',
+        ok: !!navigator.mediaDevices?.enumerateDevices,
+      },
+      {
+        label: 'navigator.mediaDevices.getUserMedia',
+        ok: !!navigator.mediaDevices?.getUserMedia,
+      },
+      {
+        label: 'AudioContext',
+        ok: !!window.AudioContext,
+      },
+      {
+        label: 'AudioContext.setSinkId  (Chrome path)',
+        ok: typeof (new AudioContext()).setSinkId === 'function',
+      },
+      {
+        label: 'HTMLMediaElement.setSinkId  (Firefox bridge path)',
+        ok: typeof document.createElement('audio').setSinkId === 'function',
+      },
+      {
+        label: 'createMediaStreamDestination',
+        ok: typeof (new AudioContext()).createMediaStreamDestination === 'function',
+      },
+    ];
+
+    const container = document.getElementById('api-checks');
+    checks.forEach(({ label, ok }) => {
+      const row = document.createElement('div');
+      row.className = 'api-row';
+      row.innerHTML = `
+        <span class="api-label">${label}</span>
+        <span class="badge ${ok ? 'badge--ok' : 'badge--err'}">${ok ? 'available' : 'missing'}</span>
+      `;
+      container.appendChild(row);
+      log(`${ok ? '✓' : '✗'} ${label}`);
+    });
+  }
+
+  // ── Device enumeration ──────────────────────────────────────────────────────
+  async function unlockDeviceLabels() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+      log('✓ Mic permission granted — device labels unlocked');
+    } catch (e) {
+      log(`⚠ Mic permission denied (${e.message}) — labels may be empty`);
+    }
+  }
+
+  async function renderDevices() {
+    const all     = await navigator.mediaDevices.enumerateDevices();
+    const outputs = all.filter(d => d.kind === 'audiooutput');
+    const container = document.getElementById('device-chips');
+    container.innerHTML = '';
+
+    log(`\nFound ${outputs.length} output device(s):`);
+
+    outputs.forEach((device, i) => {
+      const label = device.label || `Output ${i + 1}`;
+      log(`  [${device.deviceId === 'default' ? 'default' : device.deviceId.slice(0, 8) + '…'}] ${label}`);
+
+      const chip = document.createElement('div');
+      chip.className   = 'chip' + (device.deviceId === selectedDeviceId ? ' chip--active' : '');
+      chip.textContent = label;
+      chip.title       = device.deviceId;
+
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#device-chips .chip').forEach(c => c.classList.remove('chip--active'));
+        chip.classList.add('chip--active');
+        selectedDeviceId = device.deviceId;
+        log(`\nSelected: ${label}`);
+      });
+
+      container.appendChild(chip);
+    });
+  }
+
+  // ── Channel count selector ──────────────────────────────────────────────────
+  function renderChannelSelector() {
+    const container = document.getElementById('channel-chips');
+
+    CHANNEL_COUNTS.forEach(count => {
+      const chip = document.createElement('div');
+      chip.className   = 'ch-chip' + (count === targetChannelCount ? ' ch-chip--active' : '');
+      chip.textContent = count;
+      chip.title       = `${count} channels`;
+
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#channel-chips .ch-chip').forEach(c => c.classList.remove('ch-chip--active'));
+        chip.classList.add('ch-chip--active');
+        targetChannelCount = count;
+        log(`\nTarget channels set to ${count}`);
+      });
+
+      container.appendChild(chip);
+    });
+  }
+
+  // ── Test graph ──────────────────────────────────────────────────────────────
+  async function startTest() {
+    if (ctx) await stopTest();
+
+    log('\n━━━ Starting test ━━━');
+    log(`Target channels : ${targetChannelCount}`);
+    log(`Selected device : ${selectedDeviceId}`);
+
+    // ── AudioContext ──
+    ctx = new AudioContext();
+    log(`\nAudioContext created`);
+    log(`  sampleRate       : ${ctx.sampleRate} Hz`);
+    log(`  destination.maxChannelCount : ${ctx.destination.maxChannelCount}`);
+
+    // ── ChannelMerger ──
+    // Each input is mono; the merger combines them into a single N-channel output.
+    const merger = ctx.createChannelMerger(targetChannelCount);
+    log(`\nChannelMerger(${targetChannelCount})`);
+    log(`  channelCount     : ${merger.channelCount}`);
+    log(`  channelCountMode : ${merger.channelCountMode}`);
+
+    // ── Oscillators — one per channel ──
+    oscillators = [];
+    for (let ch = 0; ch < targetChannelCount; ch++) {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type            = 'sine';
+      osc.frequency.value = CHANNEL_FREQUENCIES[ch];
+      gain.gain.value     = 0.15; // quiet enough to be tolerable
+
+      osc.connect(gain);
+      // connect(destination, outputIndex, inputIndex)
+      // Each oscillator feeds one mono input of the merger.
+      gain.connect(merger, 0, ch);
+      osc.start();
+      oscillators.push(osc);
+    }
+    log(`Oscillators: ${CHANNEL_FREQUENCIES.slice(0, targetChannelCount).join(' / ')} Hz`);
+
+    // ── MediaStreamDestination ──
+    // This is the bridge between Web Audio and the <audio> element.
+    const streamDest = ctx.createMediaStreamDestination();
+    log(`\nMediaStreamDestination created`);
+    log(`  channelCount (before) : ${streamDest.channelCount}`);
+    log(`  channelCountMode (before) : ${streamDest.channelCountMode}`);
+
+    streamDest.channelCount     = targetChannelCount;
+    streamDest.channelCountMode = 'explicit';
+    log(`  channelCount (after)  : ${streamDest.channelCount}`);
+    log(`  channelCountMode (after)  : ${streamDest.channelCountMode}`);
+
+    merger.connect(streamDest);
+
+    // ── MediaStream track inspection ──
+    const tracks = streamDest.stream.getAudioTracks();
+    log(`\nMediaStream audio tracks: ${tracks.length}`);
+    if (tracks.length > 0) {
+      const settings = tracks[0].getSettings();
+      log(`  track.getSettings():`);
+      Object.entries(settings).forEach(([k, v]) => log(`    ${k}: ${v}`));
+
+      if (typeof tracks[0].getCapabilities === 'function') {
+        const caps = tracks[0].getCapabilities();
+        log(`  track.getCapabilities():`);
+        Object.entries(caps).forEach(([k, v]) =>
+          log(`    ${k}: ${JSON.stringify(v)}`)
+        );
+      }
+    }
+
+    // ── Monitoring: per-channel analysers ──
+    // The splitter breaks the merged signal back into individual channels
+    // so we can measure each one independently. Connected through a
+    // silent (gain=0) node to ensure the Web Audio graph computes them.
+    const splitter    = ctx.createChannelSplitter(targetChannelCount);
+    const silentGain  = ctx.createGain();
+    silentGain.gain.value = 0;
+    silentGain.connect(ctx.destination);
+
+    merger.connect(splitter);
+    analysers = [];
+
+    for (let ch = 0; ch < targetChannelCount; ch++) {
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      splitter.connect(analyser, ch, 0);
+      analyser.connect(silentGain);
+      analysers.push(analyser);
+    }
+
+    // ── Build per-channel VU meters ──
+    const metersEl = document.getElementById('meters');
+    metersEl.innerHTML = '';
+    for (let ch = 0; ch < targetChannelCount; ch++) {
+      const row = document.createElement('div');
+      row.className = 'meter-row';
+      row.innerHTML = `
+        <span class="meter-label">Ch ${ch + 1} &nbsp;${CHANNEL_FREQUENCIES[ch]} Hz</span>
+        <div class="meter-bar"><div class="meter-fill" id="meter-${ch}"></div></div>
+      `;
+      metersEl.appendChild(row);
+    }
+    document.getElementById('meter-panel').style.display = '';
+    startMeters();
+
+    // ── <audio> element + setSinkId ──
+    const audioEl = document.createElement('audio');
+    audioEl.srcObject = streamDest.stream;
+
+    log(`\n<audio> element created, srcObject assigned`);
+
+    // Try HTMLMediaElement.setSinkId (Firefox + Chrome).
+    // AudioContext.setSinkId (Chrome-only) is intentionally not used here
+    // since we want to test the MediaStream bridge path.
+    if (selectedDeviceId && selectedDeviceId !== 'default') {
+      if (typeof audioEl.setSinkId === 'function') {
+        try {
+          await audioEl.setSinkId(selectedDeviceId);
+          log(`HTMLMediaElement.setSinkId() applied`);
+          log(`  audio.sinkId: ${audioEl.sinkId}`);
+        } catch (e) {
+          log(`HTMLMediaElement.setSinkId() failed: ${e.message}`);
+        }
+      } else {
+        log('HTMLMediaElement.setSinkId not available — output goes to default device');
+      }
+    } else {
+      log('Default device selected — setSinkId not called');
+    }
+
+    try {
+      await audioEl.play();
+      log(`audio.play() succeeded`);
+      log(`  audio.sinkId : ${audioEl.sinkId ?? '(not supported)'}`);
+    } catch (e) {
+      log(`audio.play() failed: ${e.message}`);
+    }
+
+    // Stash on ctx so stopTest can reach it.
+    ctx._audioEl = audioEl;
+
+    document.getElementById('start-btn').disabled = true;
+    document.getElementById('stop-btn').disabled  = false;
+    log('\n━━━ Test running ━━━');
+  }
+
+  async function stopTest() {
+    if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+    oscillators.forEach(osc => { try { osc.stop(); } catch (_) {} });
+    oscillators = [];
+    analysers   = [];
+
+    if (ctx?._audioEl) {
+      ctx._audioEl.pause();
+      ctx._audioEl.srcObject = null;
+    }
+
+    if (ctx) { await ctx.close(); ctx = null; }
+
+    document.getElementById('meter-panel').style.display = 'none';
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('stop-btn').disabled  = true;
+    log('\nTest stopped');
+  }
+
+  // ── VU meter animation ──────────────────────────────────────────────────────
+  function startMeters() {
+    const data = new Uint8Array(128);
+
+    function tick() {
+      analysers.forEach((analyser, ch) => {
+        analyser.getByteTimeDomainData(data);
+        let peak = 0;
+        for (let i = 0; i < data.length; i++) {
+          const amplitude = Math.abs(data[i] - 128) / 128;
+          if (amplitude > peak) peak = amplitude;
+        }
+        const fill = document.getElementById(`meter-${ch}`);
+        if (fill) fill.style.width = (peak * 100) + '%';
+      });
+      animFrameId = requestAnimationFrame(tick);
+    }
+
+    tick();
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  checkAPIs();
+  await unlockDeviceLabels();
+  await renderDevices();
+  renderChannelSelector();
+
+  document.getElementById('start-btn').addEventListener('click', startTest);
+  document.getElementById('stop-btn').addEventListener('click', stopTest);
+  navigator.mediaDevices?.addEventListener('devicechange', renderDevices);
+</script>
+</body>
+</html>
