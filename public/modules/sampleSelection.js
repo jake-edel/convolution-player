@@ -1,18 +1,30 @@
-// ── DOM refs ────────────────────────────────────────────────────────────────
-// Exported so app.js can read the current selection values and wire up
-// its own change listeners (e.g. to re-run checkReady).
-export const sampleSel  = document.getElementById('sample-select');
+/**
+ * The sample <select> element.
+ * Exported so app.js can read the current value and wire up change listeners.
+ * @type {HTMLSelectElement}
+ */
+export const sampleSel = document.getElementById('sample-select');
+
+/**
+ * The impulse response <select> element.
+ * Exported so app.js can read the current value and wire up change listeners.
+ * @type {HTMLSelectElement}
+ */
 export const impulseSel = document.getElementById('impulse-select');
 
-// ── State ───────────────────────────────────────────────────────────────────
-// Module-private. Tracks the last randomly chosen index for each selector
-// so pickRandom* can avoid immediately repeating the same file.
+// Tracks the last randomly chosen index for each selector so the pickRandom*
+// functions can avoid immediately repeating the same file.
 let lastSampleIndex  = -1;
 let lastImpulseIndex = -1;
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-// Fills a <select> element with audio file entries fetched from the server.
-// Each option's value is the full URL path; its visible text is the filename.
+/**
+ * Populates a <select> element with audio file entries from the server.
+ * Each option's value is the full server URL path; its visible label is the bare filename.
+ *
+ * @param {HTMLSelectElement} selectElement - The select to populate.
+ * @param {string[]} files - Array of filenames returned by the API.
+ * @param {string} urlPrefix - Server path prefix, e.g. 'samples' or 'impulses'.
+ */
 function populateSelect(selectElement, files, urlPrefix) {
   selectElement.innerHTML = '';
 
@@ -29,11 +41,17 @@ function populateSelect(selectElement, files, urlPrefix) {
   });
 }
 
-// ── File lists ───────────────────────────────────────────────────────────────
-// Fetches available samples and impulses from the server and populates both
-// selectors. Accepts setStatus and onReady as callbacks rather than importing
-// them directly — that would create a circular dependency with app.js since
-// both functions reference DOM elements that live there.
+/**
+ * Fetches available samples and impulses from the server and populates both selectors.
+ *
+ * Accepts setStatus and onReady as callbacks rather than importing them directly —
+ * that would create a circular dependency since both functions reference DOM elements
+ * that live in app.js.
+ *
+ * @param {(message: string, cls: string) => void} setStatus - Updates the status bar.
+ * @param {() => void} onReady - Called after selectors are populated, e.g. to enable buttons.
+ * @returns {Promise<void>}
+ */
 export async function loadLists(setStatus, onReady) {
   try {
     const [samples, impulses] = await Promise.all([
@@ -58,10 +76,10 @@ export async function loadLists(setStatus, onReady) {
   }
 }
 
-// ── Randomize helpers ────────────────────────────────────────────────────────
-// Each function picks a random index from its selector while avoiding the
-// most recently used index, so auto-play never immediately repeats a file.
-
+/**
+ * Selects a random sample, skipping the most recently played index to avoid
+ * immediate repeats during auto-play.
+ */
 export function pickRandomSample() {
   const options = sampleSel.options;
   if (options.length <= 1) return;
@@ -74,6 +92,10 @@ export function pickRandomSample() {
   sampleSel.selectedIndex = index;
 }
 
+/**
+ * Selects a random impulse response, skipping the most recently played index
+ * to avoid immediate repeats during auto-play.
+ */
 export function pickRandomImpulse() {
   const options = impulseSel.options;
   if (options.length <= 1) return;
