@@ -5,32 +5,117 @@ let gainNode      = null;
 let convolverNode = null;
 let analyserNode  = null;
 
-// Holds the desired output device ID so it can be applied either immediately
-// (if the context already exists) or deferred until the context is first created.
-let pendingDeviceId = null;
+// ── Output routing state ──────────────────────────────────────────────────────
 
-// ── Output device ─────────────────────────────────────────────────────────────
+// Desired device ID stored before AudioContext exists, applied on first creation.
+let pendingDeviceId   = null;
+
+// <audio> element that plays the MediaStream. Routing to a specific device
+// uses HTMLMediaElement.setSinkId(), which works in both Chrome and Firefox.
+// AudioContext.setSinkId() is Chrome-only and caps at stereo.
+let audioEl           = null;
+
+// Bridge between the Web Audio graph and the <audio> element.
+let streamDest        = null;
+
+// Routes the analyser output to N discrete physical output channels.
+// Rebuilt whenever the selected device changes.
+let mergerNode        = null;
+
+// Total channels on the currently selected device. Defaults to stereo
+// until a device is explicitly selected.
+let totalChannelCount = 2;
+
+// ── Output routing ────────────────────────────────────────────────────────────
 
 /**
- * Routes audio output to the given device.
- * If the AudioContext has already been created, applies the change immediately
- * via setSinkId(). If not, stores the ID so ensureContext() can apply it on
- * first creation — this covers the case where the user selects a device before
- * hitting play for the first time.
+ * Tears down the current ChannelMerger and MediaStreamDestination and rebuilds
+ * them for a new channel count. All channels are enabled by default after a
+ * device switch. Also recreates streamDest so the MediaStream track carries the
+ * updated channel count — changing channelCount on an existing node does not
+ * reliably update the track that has already been handed to the <audio> element.
  *
- * @param {string} deviceId - The MediaDeviceInfo.deviceId of the target output.
+ * @param {number} channelCount
+ */
+function rebuildOutputChain(channelCount) {
+  if (mergerNode) {
+    try { analyserNode.disconnect(mergerNode); } catch (_) {}
+    try { mergerNode.disconnect();             } catch (_) {}
+  }
+
+  mergerNode = audioCtx.createChannelMerger(channelCount);
+
+  streamDest                  = audioCtx.createMediaStreamDestination();
+  streamDest.channelCount     = channelCount;
+  streamDest.channelCountMode = 'explicit';
+
+  for (let ch = 0; ch < channelCount; ch++) {
+    analyserNode.connect(mergerNode, 0, ch);
+  }
+
+  mergerNode.connect(streamDest);
+  totalChannelCount = channelCount;
+
+  if (audioEl) {
+    audioEl.srcObject = streamDest.stream;
+    audioEl.play().catch(error => console.warn('audioEl.play() after rebuild:', error));
+  }
+}
+
+/**
+ * Rewires which ChannelMerger inputs carry signal without rebuilding the full
+ * chain. Called when the user toggles individual channel chips.
+ *
+ * @param {Set<number>} enabledChannels - 1-based channel numbers from the UI.
+ */
+function rerouteChannels(enabledChannels) {
+  if (!mergerNode) return;
+
+  // Disconnect all current analyser→merger connections before reconnecting,
+  // since the Web Audio API has no "disconnect specific input" method on the
+  // receiving end — we must remove all and re-add only the enabled ones.
+  try { analyserNode.disconnect(mergerNode); } catch (_) {}
+
+  [...enabledChannels]
+    .map(ch => ch - 1)                                         // UI is 1-based; merger inputs are 0-based
+    .filter(index => index >= 0 && index < totalChannelCount)
+    .forEach(index => analyserNode.connect(mergerNode, 0, index));
+}
+
+/**
+ * Routes audio output to the given device, rebuilding the ChannelMerger for
+ * the new channel count. Deferred if the AudioContext does not yet exist.
+ *
+ * @param {string} deviceId     - MediaDeviceInfo.deviceId of the target output.
+ * @param {number} channelCount - Number of channels the device supports.
  * @returns {Promise<void>}
  */
-export async function setOutputDevice(deviceId) {
-  pendingDeviceId = deviceId;
+export async function setOutputDevice(deviceId, channelCount = 2) {
+  pendingDeviceId   = deviceId;
+  totalChannelCount = channelCount;
 
   if (!audioCtx) return;
 
-  try {
-    await audioCtx.setSinkId(deviceId);
-  } catch (error) {
-    console.error('Failed to set output device:', error);
+  rebuildOutputChain(channelCount);
+
+  if (typeof audioEl.setSinkId === 'function') {
+    try {
+      await audioEl.setSinkId(deviceId);
+    } catch (error) {
+      console.error('setSinkId failed:', error);
+    }
   }
+}
+
+/**
+ * Updates which physical output channels carry the audio signal by rewiring
+ * the ChannelMerger inputs. Does not rebuild the chain or interrupt playback.
+ *
+ * @param {Set<number>} enabledChannels - 1-based channel numbers from the UI.
+ */
+export function setEnabledChannels(enabledChannels) {
+  if (!audioCtx || !mergerNode) return;
+  rerouteChannels(enabledChannels);
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -51,16 +136,36 @@ export async function ensureContext() {
   if (!audioCtx) {
     audioCtx = new AudioContext();
 
-    if (pendingDeviceId) await audioCtx.setSinkId(pendingDeviceId);
-
-    // Build the persistent output chain once. These nodes survive across
-    // play calls — only the source and convolver are rebuilt per play.
+    // gainNode and analyserNode are persistent — they survive across plays.
+    // sourceNode and convolverNode are rebuilt fresh for each play call.
     gainNode     = audioCtx.createGain();
     analyserNode = audioCtx.createAnalyser();
     analyserNode.fftSize = 256;
 
     gainNode.connect(analyserNode);
-    analyserNode.connect(audioCtx.destination);
+
+    // Build the MediaStream output bridge. The graph terminates at streamDest
+    // rather than audioCtx.destination so we can route to a specific device
+    // via HTMLMediaElement.setSinkId(), which works in both Chrome and Firefox.
+    mergerNode = audioCtx.createChannelMerger(totalChannelCount);
+
+    streamDest                  = audioCtx.createMediaStreamDestination();
+    streamDest.channelCount     = totalChannelCount;
+    streamDest.channelCountMode = 'explicit';
+
+    for (let ch = 0; ch < totalChannelCount; ch++) {
+      analyserNode.connect(mergerNode, 0, ch);
+    }
+    mergerNode.connect(streamDest);
+
+    audioEl           = document.createElement('audio');
+    audioEl.srcObject = streamDest.stream;
+
+    if (pendingDeviceId && typeof audioEl.setSinkId === 'function') {
+      await audioEl.setSinkId(pendingDeviceId);
+    }
+
+    await audioEl.play();
   }
 
   if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -171,8 +276,12 @@ export function getAnalyserNode() { return analyserNode; }
 export async function probeChannelCount(deviceId) {
   const probeCtx = new AudioContext();
   try {
-    await probeCtx.setSinkId(deviceId);
-    console.log(probeCtx)
+    // setSinkId is Chrome-only. On Firefox we skip it and fall back to reading
+    // the default context's maxChannelCount, which is imprecise for non-default
+    // devices but avoids throwing and gives a usable value.
+    if (typeof probeCtx.setSinkId === 'function') {
+      await probeCtx.setSinkId(deviceId);
+    }
     return probeCtx.destination.maxChannelCount;
   } finally {
     await probeCtx.close();

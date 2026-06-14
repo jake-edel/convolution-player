@@ -1,4 +1,4 @@
-import { setOutputDevice, probeChannelCount } from './audioGraph.js';
+import { setOutputDevice, probeChannelCount, setEnabledChannels } from './audioGraph.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const deviceGroupsEl  = document.getElementById('device-groups');
@@ -98,11 +98,10 @@ function buildDeviceChips(devices) {
       chip.classList.add('device-chip--selected');
       selectedDeviceId = device.deviceId;
 
-      // Route audio to the selected device, then probe its channel count
-      // using a separate throwaway context — reading maxChannelCount from
-      // the main context after setSinkId() is unreliable across browsers.
-      await setOutputDevice(device.deviceId);
+      // Probe channel count first so we can pass it to setOutputDevice,
+      // which needs it to size the ChannelMerger correctly.
       const channelCount = await probeChannelCount(device.deviceId);
+      await setOutputDevice(device.deviceId, channelCount);
       renderChannels(channelCount);
     });
 
@@ -139,6 +138,9 @@ function renderChannels(count) {
         enabledChannels.add(channel);
         chip.classList.add('channel-chip--enabled');
       }
+      // Push the updated set into the audio graph so the ChannelMerger
+      // immediately reflects which physical outputs are active.
+      setEnabledChannels(enabledChannels);
     });
 
     channelChipsEl.appendChild(chip);
