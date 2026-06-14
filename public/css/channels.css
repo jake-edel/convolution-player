@@ -1,0 +1,42 @@
+#channel-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.channel-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.channel-chip {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #0d0d0d;
+  color: #444;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.channel-chip:hover:not(.channel-chip--enabled) {
+  border-color: #555;
+  color: #666;
+}
+
+.channel-chip--enabled {
+  background: #001a1a;
+  border-color: #00d4d4;
+  color: #00d4d4;
+}
+
+.channel-chip--enabled:hover {
+  background: #002525;
+}

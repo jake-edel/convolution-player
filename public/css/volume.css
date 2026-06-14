@@ -1,0 +1,42 @@
+/* .row wraps .volume-group and .number-group side by side in the play panel. */
+.row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.volume-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#vol-display {
+  font-size: 0.8rem;
+  color: #c8ff00;
+  width: 3ch;
+  text-align: right;
+}
+
+/* VU meter: a thin bar beneath the volume slider */
+.vu-bar {
+  height: 4px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.vu-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4a6600, #c8ff00);
+  border-radius: 2px;
+  transition: width 0.05s;
+}

@@ -1,0 +1,30 @@
+.number-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.number-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.num-btn {
+  width: 42px;
+  height: 42px;
+  background: #0d0d0d;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #888;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.num-btn:hover { border-color: #555; color: #e0e0e0; }
+.num-btn.active {
+  background: #1a1a00;
+  border-color: #c8ff00;
+  color: #c8ff00;
+}

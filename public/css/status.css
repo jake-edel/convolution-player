@@ -1,0 +1,10 @@
+.status {
+  font-size: 0.72rem;
+  color: #444;
+  letter-spacing: 0.05em;
+  min-height: 1.2em;
+  transition: color 0.3s;
+}
+.status.ok   { color: #4a8800; }
+.status.err  { color: #aa3300; }
+.status.info { color: #558;    }

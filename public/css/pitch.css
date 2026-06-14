@@ -1,0 +1,10 @@
+#pitch-display {
+  font-size: 0.8rem;
+  color: #ff9f40;
+  width: 5ch;
+  text-align: right;
+}
+
+/* Override the default lime-green thumb colour for the pitch slider. */
+input[type="range"]#pitch::-webkit-slider-thumb { background: #ff9f40; }
+input[type="range"]#pitch::-moz-range-thumb     { background: #ff9f40; }

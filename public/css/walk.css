@@ -1,0 +1,83 @@
+/* The walk group is visually distinct: a contained sub-panel with an orange
+   accent, housing the walk-enable button and its two slider controls. */
+.walk-group {
+  border: 1px solid #4a2800;
+  border-radius: 5px;
+  padding: 0.75rem;
+  background: #0d0800;
+}
+
+.walk-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.walk-sliders {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.walk-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.walk-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #a05820;
+  width: 7rem;
+  flex-shrink: 0;
+}
+
+/* ── Walk enable/disable button ───────────────────────── */
+
+#walk-btn {
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  background: #1a0d00;
+  border: 1px solid #664400;
+  border-radius: 4px;
+  color: #ff9f40;
+  font-family: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+  align-self: stretch;
+}
+#walk-btn:hover { border-color: #ff9f40; background: #251200; }
+#walk-btn.active {
+  background: #100800;
+  border-color: #ff9f40;
+  animation: pulse-orange 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-orange {
+  0%, 100% { border-color: #ff9f40; }
+  50%       { border-color: #664400; }
+}
+
+/* ── Walk value displays ──────────────────────────────── */
+
+#walk-step-display,
+#walk-interval-display {
+  font-size: 0.8rem;
+  color: #ff9f40;
+  width: 5ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Override default thumb colour for the walk sliders. */
+input[type="range"]#walk-step::-webkit-slider-thumb,
+input[type="range"]#walk-interval::-webkit-slider-thumb { background: #ff9f40; }
+input[type="range"]#walk-step::-moz-range-thumb,
+input[type="range"]#walk-interval::-moz-range-thumb     { background: #ff9f40; }

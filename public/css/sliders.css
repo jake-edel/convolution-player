@@ -1,0 +1,37 @@
+/* Base styles shared by every range slider in the app.
+   Individual components override the thumb colour where they need
+   a different accent (pitch = orange, walk = orange, etc.). */
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #c8ff00;
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #c8ff00;
+  border: none;
+  cursor: pointer;
+}
+
+/* Shared label + slider + value-display row layout.
+   Used by gap, pitch, and walk sliders. */
+.gap-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.gap-row label { white-space: nowrap; flex-shrink: 0; }

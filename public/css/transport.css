@@ -1,0 +1,90 @@
+.transport {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn {
+  flex: 1;
+  padding: 0.9rem;
+  border: 1px solid #333;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+/* ── Play button ──────────────────────────────────────── */
+
+#play-btn {
+  background: #1a2200;
+  border-color: #4a6600;
+  color: #c8ff00;
+}
+#play-btn:hover:not(:disabled) {
+  background: #253100;
+  border-color: #c8ff00;
+}
+#play-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+#play-btn.playing {
+  background: #0d1500;
+  border-color: #c8ff00;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { border-color: #c8ff00; }
+  50%       { border-color: #4a6600; }
+}
+
+/* ── Stop button ──────────────────────────────────────── */
+
+#stop-btn {
+  background: #1a0000;
+  border-color: #660000;
+  color: #ff6060;
+}
+#stop-btn:hover:not(:disabled) {
+  background: #250000;
+  border-color: #ff6060;
+}
+#stop-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Auto button ──────────────────────────────────────── */
+
+#auto-btn {
+  background: #001a1a;
+  border-color: #006666;
+  color: #00d4d4;
+}
+#auto-btn:hover:not(:disabled) {
+  background: #002525;
+  border-color: #00d4d4;
+}
+#auto-btn.active {
+  background: #001010;
+  border-color: #00d4d4;
+  animation: pulse-cyan 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-cyan {
+  0%, 100% { border-color: #00d4d4; }
+  50%       { border-color: #006666; }
+}
+
+/* ── Gap / auto-play interval display ────────────────── */
+
+#gap-display {
+  font-size: 0.8rem;
+  color: #00d4d4;
+  width: 4ch;
+  text-align: right;
+}
