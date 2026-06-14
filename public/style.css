@@ -311,6 +311,47 @@ input[type="range"]#walk-interval::-moz-range-thumb     { background: #ff9f40; }
   50% { border-color: #4a6600; }
 }
 
+/* ── Device display ──────────────────────────────────────────────────────── */
+
+.device-scanning {
+  font-size: 0.72rem;
+  color: #444;
+}
+
+.device-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.device-chip {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+  border: 1px solid #005555;
+  background: #001515;
+  color: #007a7a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.device-chip:hover:not(.device-chip--selected) {
+  border-color: #007a7a;
+  color: #009999;
+}
+
+.device-chip--selected {
+  border-color: #00d4d4;
+  color: #00d4d4;
+  background: #002a2a;
+}
+
+/* ── Status ──────────────────────────────────────────────────────────────── */
+
 .status {
   font-size: 0.72rem;
   color: #444;

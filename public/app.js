@@ -1,3 +1,5 @@
+import './modules/deviceDisplay.js';
+
 import {
   sampleSel,
   impulseSel,

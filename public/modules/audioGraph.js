@@ -5,12 +5,42 @@ let gainNode      = null;
 let convolverNode = null;
 let analyserNode  = null;
 
+// Holds the desired output device ID so it can be applied either immediately
+// (if the context already exists) or deferred until the context is first created.
+let pendingDeviceId = null;
+
+// ── Output device ─────────────────────────────────────────────────────────────
+
+/**
+ * Routes audio output to the given device.
+ * If the AudioContext has already been created, applies the change immediately
+ * via setSinkId(). If not, stores the ID so ensureContext() can apply it on
+ * first creation — this covers the case where the user selects a device before
+ * hitting play for the first time.
+ *
+ * @param {string} deviceId - The MediaDeviceInfo.deviceId of the target output.
+ * @returns {Promise<void>}
+ */
+export async function setOutputDevice(deviceId) {
+  pendingDeviceId = deviceId;
+
+  if (!audioCtx) return;
+
+  try {
+    await audioCtx.setSinkId(deviceId);
+  } catch (error) {
+    console.error('Failed to set output device:', error);
+  }
+}
+
 // ── Context ───────────────────────────────────────────────────────────────────
 
 /**
  * Creates the AudioContext and wires the persistent output chain
  * (gainNode → analyserNode → destination) on first call, then resumes
  * the context if it was suspended.
+ *
+ * Applies any pending output device selection made before the context existed.
  *
  * Must be called from a user-gesture handler — browsers block AudioContext
  * creation until the user has interacted with the page.
@@ -20,6 +50,8 @@ let analyserNode  = null;
 export async function ensureContext() {
   if (!audioCtx) {
     audioCtx = new AudioContext();
+
+    if (pendingDeviceId) await audioCtx.setSinkId(pendingDeviceId);
 
     // Build the persistent output chain once. These nodes survive across
     // play calls — only the source and convolver are rebuilt per play.
