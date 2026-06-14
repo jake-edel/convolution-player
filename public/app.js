@@ -54,19 +54,6 @@ function populateSelect(sel, files, prefix) {
   });
 }
 
-// async function sendOSC(address, ...args) {
-//   try {
-//     const res = await fetch('/api/osc', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ address, args })
-//     });
-//     if (!res.ok) throw new Error(await res.text());
-//   } catch (e) {
-//     setStatus(`OSC error: ${e.message}`, 'err');
-//   }
-// }
-
 // ── File lists ─────────────────────────────────────────────────────────────
 async function loadLists() {
   try {
@@ -243,6 +230,8 @@ async function play() {
   if (!audioCtx) audioCtx = new AudioContext();
   if (audioCtx.state === 'suspended') await audioCtx.resume();
 
+  console.log(audioCtx.destination.maxChannelCount)
+
   // Stop any existing playback
   if (sourceNode) {
     try { sourceNode.stop(); } catch (_) {}
@@ -305,7 +294,6 @@ async function play() {
 
     const sampleName  = sampleSel.options[sampleSel.selectedIndex].textContent;
     const impulseName = impulseSel.options[impulseSel.selectedIndex].textContent;
-    // await sendOSC('/play', selectedNumber, sampleName, impulseName);
 
     playBtn.classList.add('playing');
     playBtn.textContent = '▶ Playing';
@@ -334,7 +322,6 @@ async function stop() {
   playBtn.textContent = '▶ Play';
   playBtn.disabled = false;
   stopBtn.disabled = true;
-  // await sendOSC('/stop', selectedNumber);
   setStatus('Stopped', 'info');
 }
 
