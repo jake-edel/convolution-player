@@ -1,3 +1,11 @@
+import {
+  sampleSel,
+  impulseSel,
+  loadLists,
+  pickRandomSample,
+  pickRandomImpulse,
+} from './modules/sampleSelection.js';
+
 // ── State ──────────────────────────────────────────────────────────────────
 let audioCtx = null;
 let sourceNode = null;
@@ -8,12 +16,8 @@ let animFrame = null;
 let selectedNumber = 1;
 let autoPlaying = false;
 let autoTimer = null;
-let lastSampleIndex = -1;
-let lastImpulseIndex = -1;
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
-const sampleSel  = document.getElementById('sample-select');
-const impulseSel = document.getElementById('impulse-select');
 const volumeSlider = document.getElementById('volume');
 const volDisplay   = document.getElementById('vol-display');
 const vuFill       = document.getElementById('vu-fill');
@@ -38,41 +42,6 @@ let walkTimer  = null;
 function setStatus(msg, cls = '') {
   statusEl.textContent = msg;
   statusEl.className = 'status ' + cls;
-}
-
-function populateSelect(sel, files, prefix) {
-  sel.innerHTML = '';
-  if (!files.length) {
-    sel.innerHTML = `<option value="">— no files found —</option>`;
-    return;
-  }
-  files.forEach(f => {
-    const opt = document.createElement('option');
-    opt.value = `/${prefix}/${encodeURIComponent(f)}`;
-    opt.textContent = f;
-    sel.appendChild(opt);
-  });
-}
-
-// ── File lists ─────────────────────────────────────────────────────────────
-async function loadLists() {
-  try {
-    const [samples, impulses] = await Promise.all([
-      fetch('/api/samples').then(r => r.json()),
-      fetch('/api/impulses').then(r => r.json())
-    ]);
-    populateSelect(sampleSel, samples, 'samples');
-    populateSelect(impulseSel, impulses, 'impulses');
-    checkReady();
-    setStatus(
-      samples.length && impulses.length
-        ? `${samples.length} sample(s), ${impulses.length} impulse(s) loaded`
-        : 'Warning: one or more folders appear empty',
-      samples.length && impulses.length ? 'ok' : 'err'
-    );
-  } catch (e) {
-    setStatus('Failed to load file lists: ' + e.message, 'err');
-  }
 }
 
 function checkReady() {
@@ -145,26 +114,6 @@ function pickRandomPitch() {
 }
 
 // ── Auto helpers ───────────────────────────────────────────────────────────
-function pickRandomSample() {
-  const opts = sampleSel.options;
-  if (opts.length <= 1) return;
-  let idx;
-  do { idx = Math.floor(Math.random() * opts.length); }
-  while (idx === lastSampleIndex && opts.length > 1);
-  lastSampleIndex = idx;
-  sampleSel.selectedIndex = idx;
-}
-
-function pickRandomImpulse() {
-  const opts = impulseSel.options;
-  if (opts.length <= 1) return;
-  let idx;
-  do { idx = Math.floor(Math.random() * opts.length); }
-  while (idx === lastImpulseIndex && opts.length > 1);
-  lastImpulseIndex = idx;
-  impulseSel.selectedIndex = idx;
-}
-
 function stopAuto() {
   autoPlaying = false;
   clearTimeout(autoTimer);
@@ -347,4 +296,4 @@ autoBtn.addEventListener('click', () => {
 stopBtn.addEventListener('click', () => { stopAuto(); stop(); });
 
 // ── Init ───────────────────────────────────────────────────────────────────
-loadLists();
+loadLists(setStatus, checkReady);
