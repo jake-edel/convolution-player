@@ -179,8 +179,6 @@ async function play() {
   if (!audioCtx) audioCtx = new AudioContext();
   if (audioCtx.state === 'suspended') await audioCtx.resume();
 
-  console.log(audioCtx.destination.maxChannelCount)
-
   // Stop any existing playback
   if (sourceNode) {
     try { sourceNode.stop(); } catch (_) {}
