@@ -145,6 +145,30 @@
       transition: width 0.04s;
     }
 
+    /* Mute toggle — sits to the right of each meter bar */
+    .mute-btn {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 3px;
+      color: #444;
+      font-family: inherit;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.12s;
+      user-select: none;
+    }
+    .mute-btn:hover { border-color: #555; color: #888; }
+    .mute-btn--muted {
+      background: #1a0000;
+      border-color: #660000;
+      color: #ff6060;
+    }
+    .mute-btn--muted:hover { border-color: #ff6060; }
+
     /* ── Log ── */
     #log {
       background: #0a0a0a;
@@ -205,12 +229,13 @@
   const CHANNEL_COUNTS      = [2, 4, 6, 8];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let selectedDeviceId  = 'default';
+  let selectedDeviceId   = 'default';
   let targetChannelCount = 8;
-  let ctx         = null;
-  let oscillators = [];
-  let analysers   = [];
-  let animFrameId = null;
+  let ctx          = null;
+  let oscillators  = [];
+  let channelGains = []; // GainNode per oscillator — lets mute buttons silence individual channels
+  let analysers    = [];
+  let animFrameId  = null;
 
   // ── Log ─────────────────────────────────────────────────────────────────────
   function log(msg) {
@@ -357,6 +382,7 @@
       gain.connect(merger, 0, ch);
       osc.start();
       oscillators.push(osc);
+      channelGains.push(gain);
     }
     log(`Oscillators: ${CHANNEL_FREQUENCIES.slice(0, targetChannelCount).join(' / ')} Hz`);
 
@@ -411,16 +437,43 @@
       analysers.push(analyser);
     }
 
-    // ── Build per-channel VU meters ──
+    // ── Build per-channel VU meters with per-channel mute buttons ──
     const metersEl = document.getElementById('meters');
     metersEl.innerHTML = '';
+
     for (let ch = 0; ch < targetChannelCount; ch++) {
       const row = document.createElement('div');
       row.className = 'meter-row';
-      row.innerHTML = `
-        <span class="meter-label">Ch ${ch + 1} &nbsp;${CHANNEL_FREQUENCIES[ch]} Hz</span>
-        <div class="meter-bar"><div class="meter-fill" id="meter-${ch}"></div></div>
-      `;
+
+      const label = document.createElement('span');
+      label.className   = 'meter-label';
+      label.textContent = `Ch ${ch + 1}  ${CHANNEL_FREQUENCIES[ch]} Hz`;
+
+      const bar  = document.createElement('div');
+      bar.className = 'meter-bar';
+      const fill = document.createElement('div');
+      fill.className = 'meter-fill';
+      fill.id        = `meter-${ch}`;
+      bar.appendChild(fill);
+
+      const muteBtn = document.createElement('button');
+      muteBtn.className = 'mute-btn';
+      muteBtn.textContent = 'M';
+      muteBtn.title = `Mute channel ${ch + 1}`;
+
+      // Capture ch in closure so the handler always targets the right gain node.
+      let muted = false;
+      muteBtn.addEventListener('click', () => {
+        muted = !muted;
+        // Ramp rather than snap to avoid clicks/pops in the audio.
+        channelGains[ch].gain.setTargetAtTime(muted ? 0 : 0.15, ctx.currentTime, 0.01);
+        muteBtn.classList.toggle('mute-btn--muted', muted);
+        log(`Ch ${ch + 1} ${muted ? 'muted' : 'unmuted'}`);
+      });
+
+      row.appendChild(label);
+      row.appendChild(bar);
+      row.appendChild(muteBtn);
       metersEl.appendChild(row);
     }
     document.getElementById('meter-panel').style.display = '';
@@ -470,8 +523,9 @@
   async function stopTest() {
     if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
     oscillators.forEach(osc => { try { osc.stop(); } catch (_) {} });
-    oscillators = [];
-    analysers   = [];
+    oscillators  = [];
+    channelGains = [];
+    analysers    = [];
 
     if (ctx?._audioEl) {
       ctx._audioEl.pause();
